@@ -1,0 +1,827 @@
+---
+title: 'Empathy Paper (Study II)'
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+date: "2026-09-28"
+---
+
+# Original study: https://github.com/thu-coai/Emotional-Support-Conversation
+
+# note: In the Empathy paper, Seeker Relevance -variable is Response Relevance and Supporter Relevance is Disclosure Detail
+
+
+```{r}
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(coin)
+```
+
+
+```{r}
+df <- read_csv(
+  "~/Desktop/emotional_support_conversations.csv"
+)
+
+```
+
+
+### DESCRIPTIVES ####
+
+```{r}
+
+# Check variable distributions
+
+# Initial emotional intensity
+ggplot(
+  df %>% filter(!is.na(seeker_initial_emotion_intensity)),
+  aes(x = factor(seeker_initial_emotion_intensity, levels = 1:5))
+) +
+  geom_bar(fill = "steelblue", width = 0.75) +
+  scale_x_discrete(drop = FALSE) +
+  labs(
+    title = "Initial emotional intensity",
+    x = "Initial emotional intensity (1–5)",
+    y = "Number of conversations"
+  ) +
+  theme_classic(base_size = 13)
+
+
+# Final emotional intensity
+ggplot(
+  df %>% filter(!is.na(seeker_final_emotion_intensity)),
+  aes(x = factor(seeker_final_emotion_intensity, levels = 1:5))
+) +
+  geom_bar(fill = "steelblue", width = 0.75) +
+  scale_x_discrete(drop = FALSE) +
+  labs(
+    title = "Final emotional intensity",
+    x = "Final emotional intensity (1–5)",
+    y = "Number of conversations"
+  ) +
+  theme_classic(base_size = 13)
+
+
+# Perceived empathy
+ggplot(
+  df %>% filter(!is.na(seeker_empathy)),
+  aes(x = factor(seeker_empathy, levels = 1:5))
+) +
+  geom_bar(fill = "#16B12C", width = 0.75) +
+  scale_x_discrete(drop = FALSE) +
+  labs(
+    x = "Empathy Rating",
+    y = "Number of Conversations"
+  ) +
+  theme_classic(base_size = 13)
+
+
+
+```
+
+
+
+```{r}
+# Empathy rating percentages (i.e., how many gave 5/5 empathy rating, 4/5 rating, etc.)
+
+empathy_table <- data.frame(
+  Empathy_rating = 1:5,
+  Number = as.integer(table(factor(df$seeker_empathy, levels = 1:5)))
+)
+
+empathy_table$Percentage <- round(
+  empathy_table$Number / sum(empathy_table$Number) * 100,
+  2
+)
+
+print(empathy_table)
+
+
+# Empathy rating mean and sd
+
+cat("Mean empathy:", round(mean(df$seeker_empathy, na.rm = TRUE), 2), "\n")
+cat("SD:", round(sd(df$seeker_empathy, na.rm = TRUE), 2), "\n")
+cat("Valid observations:", sum(!is.na(df$seeker_empathy)), "\n")
+```
+
+
+
+```{r}
+
+# Descriptive statistics
+
+# Initial emotional intensity
+cat("Initial emotional intensity\n")
+cat("IQR:", IQR(df$seeker_initial_emotion_intensity, na.rm = TRUE), "\n")
+cat("Mean:", round(mean(df$seeker_initial_emotion_intensity, na.rm = TRUE), 2), "\n")
+cat("Median:", median(df$seeker_initial_emotion_intensity, na.rm = TRUE), "\n")
+cat("SD:", round(sd(df$seeker_initial_emotion_intensity, na.rm = TRUE), 2), "\n")
+cat("Min:", min(df$seeker_initial_emotion_intensity, na.rm = TRUE), "\n")
+cat("Max:", max(df$seeker_initial_emotion_intensity, na.rm = TRUE), "\n")
+cat("Range:", paste(
+  min(df$seeker_initial_emotion_intensity, na.rm = TRUE),
+  max(df$seeker_initial_emotion_intensity, na.rm = TRUE),
+  sep = "–"
+), "\n")
+cat("Valid observations:", sum(!is.na(df$seeker_initial_emotion_intensity)), "\n\n")
+
+
+# Final emotional intensity
+cat("Final emotional intensity\n")
+cat("IQR:", IQR(df$seeker_final_emotion_intensity, na.rm = TRUE), "\n")
+cat("Mean:", round(mean(df$seeker_final_emotion_intensity, na.rm = TRUE), 2), "\n")
+cat("Median:", median(df$seeker_final_emotion_intensity, na.rm = TRUE), "\n")
+cat("SD:", round(sd(df$seeker_final_emotion_intensity, na.rm = TRUE), 2), "\n")
+cat("Min:", min(df$seeker_final_emotion_intensity, na.rm = TRUE), "\n")
+cat("Max:", max(df$seeker_final_emotion_intensity, na.rm = TRUE), "\n")
+cat("Range:", paste(
+  min(df$seeker_final_emotion_intensity, na.rm = TRUE),
+  max(df$seeker_final_emotion_intensity, na.rm = TRUE),
+  sep = "–"
+), "\n")
+cat("Valid observations:", sum(!is.na(df$seeker_final_emotion_intensity)), "\n\n")
+
+
+# Perceived empathy
+cat("Perceived empathy\n")
+cat("Mean:", round(mean(df$seeker_empathy, na.rm = TRUE), 2), "\n")
+cat("Median:", median(df$seeker_empathy, na.rm = TRUE), "\n")
+cat("SD:", round(sd(df$seeker_empathy, na.rm = TRUE), 2), "\n")
+cat("Min:", min(df$seeker_empathy, na.rm = TRUE), "\n")
+cat("Max:", max(df$seeker_empathy, na.rm = TRUE), "\n")
+cat("Range:", paste(
+  min(df$seeker_empathy, na.rm = TRUE),
+  max(df$seeker_empathy, na.rm = TRUE),
+  sep = "–"
+), "\n")
+cat("Valid observations:", sum(!is.na(df$seeker_empathy)), "\n\n")
+
+```
+
+
+```{r}
+# Descriptive statistics: Relevance seeker
+
+cat("seeker relevance\n")
+cat("Mean:", round(mean(df$seeker_relevance, na.rm = TRUE), 2), "\n")
+cat("SD:", round(sd(df$seeker_relevance, na.rm = TRUE), 2), "\n")
+cat("Min:", min(df$seeker_relevance, na.rm = TRUE), "\n")
+cat("Max:", max(df$seeker_relevance, na.rm = TRUE), "\n")
+cat("Range:", paste(
+  min(df$seeker_relevance, na.rm = TRUE),
+  max(df$seeker_relevance, na.rm = TRUE),
+  sep = "–"
+), "\n")
+cat("Valid observations:", sum(!is.na(df$seeker_relevance)), "\n\n")
+```
+
+
+```{r}
+
+# Descriptive statistics: Relevance supporter
+
+
+cat("supporter relevance\n")
+cat("Mean:", round(mean(df$supporter_relevance, na.rm = TRUE), 2), "\n")
+cat("SD:", round(sd(df$supporter_relevance, na.rm = TRUE), 2), "\n")
+cat("Min:", min(df$supporter_relevance, na.rm = TRUE), "\n")
+cat("Max:", max(df$supporter_relevance, na.rm = TRUE), "\n")
+cat("Range:", paste(
+  min(df$supporter_relevance, na.rm = TRUE),
+  max(df$supporter_relevance, na.rm = TRUE),
+  sep = "–"
+), "\n")
+cat("Valid observations:", sum(!is.na(df$supporter_relevance)), "\n\n")
+
+
+```
+
+
+```{r}
+df$emotion_improvement <-
+  df$seeker_initial_emotion_intensity -
+  df$seeker_final_emotion_intensity
+
+# Emotional improvement
+ggplot(
+  df %>% filter(!is.na(emotion_improvement)),
+  aes(x = factor(emotion_improvement, levels = -4:4))
+) +
+  geom_bar(fill = "steelblue", width = 0.75) +
+  scale_x_discrete(drop = FALSE) +
+  labs(
+    title = "Emotional improvement",
+    x = "Change in emotional intensity (Initial - Final)",
+    y = "Number of conversations"
+  ) +
+  theme_classic(base_size = 13)
+
+# Emotional improvement: mean and SD
+
+cat("Mean emotional improvement:",
+    round(mean(df$emotion_improvement, na.rm = TRUE), 2), "\n")
+
+cat("SD:",
+    round(sd(df$emotion_improvement, na.rm = TRUE), 2), "\n")
+
+cat("Valid observations:",
+    sum(!is.na(df$emotion_improvement)), "\n")
+
+```
+
+### WILCOXON SIGNED RANK
+
+
+```{r}
+
+# Paired change in negative emotional intensity
+change_test <- wilcox.test(
+  df$seeker_initial_emotion_intensity,
+  df$seeker_final_emotion_intensity,
+  paired = TRUE,
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+change_test
+
+```
+```{r}
+
+
+# Keep complete pairs
+paired_df <- data.frame(
+  initial = df$seeker_initial_emotion_intensity,
+  final = df$seeker_final_emotion_intensity
+)
+
+paired_df <- na.omit(paired_df)
+
+# Create long-format paired data
+long_df <- data.frame(
+  id = factor(rep(seq_len(nrow(paired_df)), times = 2)),
+  condition = factor(
+    rep(c("initial", "final"), each = nrow(paired_df)),
+    levels = c("final", "initial")
+  ),
+  intensity = c(paired_df$initial, paired_df$final)
+)
+
+# Wilcoxon signed-rank test
+test <- coin::wilcoxsign_test(
+  intensity ~ condition | id,
+  data = long_df,
+  distribution = "asymptotic"
+)
+
+# Extract standardized z and p-value
+z <- coin::statistic(test, type = "standardized")
+p <- coin::pvalue(test)
+
+cat("z =", round(z, 2), "\n")
+cat("p =", p, "\n")
+```
+
+```{r}
+
+# Wilcoxon effect size (r = z / sqrt(N))
+
+# Number of nonzero paired differences
+differences <- paired_df$initial - paired_df$final
+N <- sum(differences != 0)
+
+# Calculate effect size
+r <- as.numeric(z) / sqrt(N)
+
+# Print results
+cat("N =", N, "\n")
+cat("Wilcoxon effect size r =", round(r, 2), "\n")
+
+```
+
+
+### CORRELATIONS ####
+
+
+```{r}
+# Correlation analysis: Initial emotional intensity and Empathy
+
+
+cor.test(
+  df$seeker_initial_emotion_intensity,
+  df$seeker_empathy,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$seeker_initial_emotion_intensity,
+    df$seeker_empathy
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+```
+
+```{r}
+
+# Correlation: initial emotional intensity and final emotional intensity
+
+cor.test(
+  df$seeker_initial_emotion_intensity,
+  df$seeker_final_emotion_intensity,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$seeker_initial_emotion_intensity,
+    df$seeker_final_emotion_intensity
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+```
+
+```{r}
+
+# Correlation: Final emotional intensity and perceived empathy
+
+cor.test(
+  df$seeker_final_emotion_intensity,
+  df$seeker_empathy,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$seeker_final_emotion_intensity,
+    df$seeker_empathy
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+
+```
+
+
+
+
+```{r}
+
+# Correlation analysis: emotional intensity change and Empathy
+
+# Change metric
+df$emotion_improvement <-
+  df$seeker_initial_emotion_intensity -
+  df$seeker_final_emotion_intensity
+
+# Correlation
+cor.test(
+  df$emotion_improvement,
+  df$seeker_empathy,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$emotion_improvement,
+    df$seeker_empathy
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+
+```
+
+```{r}
+
+
+# Create emotional improvement score
+df$emotion_improvement <-
+  df$seeker_initial_emotion_intensity -
+  df$seeker_final_emotion_intensity
+
+# Plot
+ggplot(
+  df %>%
+    filter(
+      !is.na(emotion_improvement),
+      !is.na(seeker_empathy)
+    ),
+  aes(
+    x = seeker_empathy,
+    y = emotion_improvement
+  )
+) +
+  
+  # Jittered individual observations
+  geom_jitter(
+    width = 0.25,
+    height = 0.20,
+    alpha = 0.035,
+    size = 2.6,
+    color = "#16B12C"
+  ) +
+  
+  # Linear trend and 95% confidence interval
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    level = 0.95,
+    linewidth = 0.9,
+    color = "#16B12C",
+    fill = "#16B12C",
+    alpha = 0.15
+  ) +
+  
+  # X-axis: perceived empathy
+  scale_x_continuous(
+    breaks = 1:5,
+    limits = c(0.75, 5.25),
+    expand = expansion(mult = c(0.01, 0.01))
+  ) +
+  
+  # Y-axis: emotional improvement
+  scale_y_continuous(
+    breaks = 0:4,
+    limits = c(-0.15, 4.15),
+    expand = expansion(mult = c(0.01, 0.01))
+  ) +
+  
+  # Axis labels
+  labs(
+    x = "Empathy",
+    y = "Emotional Improvement"
+  ) +
+  
+  # Clean journal-style theme
+  theme_classic(base_size = 12) +
+  theme(
+    aspect.ratio = 0.8
+  )
+
+```
+
+
+# RELEVANCE-VARIABLES AND THEIR CORRELATIONS
+
+```{r}
+
+
+# Correlation: seeker relevance and perceived empathy
+
+cor.test(
+  df$seeker_relevance,
+  df$seeker_empathy,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$seeker_relevance,
+    df$seeker_empathy
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+
+
+```
+
+
+
+```{r}
+# Supporter relevance × empathy
+test_supporter_relevance <- cor.test(
+  df$supporter_relevance,
+  df$seeker_empathy,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_supporter_relevance <- sum(
+  complete.cases(
+    df$supporter_relevance,
+    df$seeker_empathy
+  )
+)
+
+cat("\nSupporter relevance × perceived empathy\n")
+print(test_supporter_relevance)
+cat("N =", n_supporter_relevance, "\n")
+cat("df =", n_supporter_relevance - 2, "\n")
+```
+
+
+```{r}
+
+
+# Supporter relevance × initial emotional intensity
+test_supporter_initial <- cor.test(
+  df$supporter_relevance,
+  df$seeker_initial_emotion_intensity,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_supporter_initial <- sum(
+  complete.cases(
+    df$supporter_relevance,
+    df$seeker_initial_emotion_intensity
+  )
+)
+
+cat("\nSupporter relevance × initial emotional intensity\n")
+print(test_supporter_initial)
+cat("N =", n_supporter_initial, "\n")
+cat("df =", n_supporter_initial - 2, "\n")
+
+```
+
+
+
+
+```{r}
+
+# Supporter relevance × final emotional intensity
+test_supporter_final <- cor.test(
+  df$supporter_relevance,
+  df$seeker_final_emotion_intensity,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_supporter_final <- sum(
+  complete.cases(
+    df$supporter_relevance,
+    df$seeker_final_emotion_intensity
+  )
+)
+
+cat("\nSupporter relevance × final emotional intensity\n")
+print(test_supporter_final)
+cat("N =", n_supporter_final, "\n")
+cat("df =", n_supporter_final - 2, "\n")
+
+
+```
+
+
+```{r}
+
+# Seeker relevance × initial emotional intensity
+test_seeker_initial <- cor.test(
+  df$seeker_relevance,
+  df$seeker_initial_emotion_intensity,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_seeker_initial <- sum(
+  complete.cases(
+    df$seeker_relevance,
+    df$seeker_initial_emotion_intensity
+  )
+)
+
+cat("\nSeeker relevance × initial emotional intensity\n")
+print(test_seeker_initial)
+cat("N =", n_seeker_initial, "\n")
+cat("df =", n_seeker_initial - 2, "\n")
+```
+
+
+
+```{r}
+# Seeker relevance × final emotional intensity
+test_seeker_final <- cor.test(
+  df$seeker_relevance,
+  df$seeker_final_emotion_intensity,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_seeker_final <- sum(
+  complete.cases(
+    df$seeker_relevance,
+    df$seeker_final_emotion_intensity
+  )
+)
+
+cat("\nSeeker relevance × final emotional intensity\n")
+print(test_seeker_final)
+cat("N =", n_seeker_final, "\n")
+cat("df =", n_seeker_final - 2, "\n")
+
+
+```
+
+```{r}
+
+# ============================================================
+# Seeker relevance × supporter relevance
+# ============================================================
+
+test_relevance_agreement <- cor.test(
+  df$seeker_relevance,
+  df$supporter_relevance,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+n_relevance_agreement <- sum(
+  complete.cases(
+    df$seeker_relevance,
+    df$supporter_relevance
+  )
+)
+
+cat("\nSeeker relevance × supporter relevance\n")
+print(test_relevance_agreement)
+cat("N =", n_relevance_agreement, "\n")
+cat("df =", n_relevance_agreement - 2, "\n")
+
+
+```
+
+
+
+```{r}
+# Correlation: emotional improvement and seeker relevance
+
+cor.test(
+  df$emotion_improvement,
+  df$seeker_relevance,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$emotion_improvement,
+    df$seeker_relevance
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+
+```
+
+```{r}
+
+# Create emotional improvement score
+df$emotion_improvement <-
+  df$seeker_initial_emotion_intensity -
+  df$seeker_final_emotion_intensity
+
+# Plot: supporter response relevance × emotional improvement
+ggplot(
+  df %>%
+    filter(
+      !is.na(emotion_improvement),
+      !is.na(seeker_relevance)
+    ),
+  aes(
+    x = seeker_relevance,
+    y = emotion_improvement
+  )
+) +
+  
+  # Jittered individual observations
+  geom_jitter(
+    width = 0.25,
+    height = 0.20,
+    alpha = 0.035,
+    size = 2.6,
+    color = "#16B12C"
+  ) +
+  
+  # Linear trend and 95% confidence interval
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    level = 0.95,
+    linewidth = 0.9,
+    color = "#16B12C",
+    fill = "#16B12C",
+    alpha = 0.15
+  ) +
+  
+  # X-axis: supporter response relevance
+  scale_x_continuous(
+    breaks = 1:5,
+    limits = c(1.75, 5.25),
+    expand = expansion(mult = c(0.01, 0.01))
+  ) +
+  
+  # Y-axis: emotional improvement
+  scale_y_continuous(
+    breaks = 0:4,
+    limits = c(-0.15, 4.15),
+    expand = expansion(mult = c(0.01, 0.01))
+  ) +
+  
+  # Axis labels
+  labs(
+    x = "Response Relevance",
+    y = "Emotional Improvement"
+  ) +
+  
+  # Clean journal-style theme
+  theme_classic(base_size = 12) +
+  theme(
+    aspect.ratio = 0.8
+  )
+
+```
+
+
+```{r}
+
+# Correlation: emotional improvement and supporter relevance
+
+cor.test(
+  df$emotion_improvement,
+  df$supporter_relevance,
+  method = "spearman",
+  alternative = "two.sided",
+  exact = FALSE
+)
+
+# Number of complete paired observations
+n_complete <- sum(
+  complete.cases(
+    df$emotion_improvement,
+    df$supporter_relevance
+  )
+)
+
+# Degrees of freedom
+df_spearman <- n_complete - 2
+
+cat("N =", n_complete, "\n")
+cat("df =", df_spearman, "\n")
+
+
+
+
+
+```
+
